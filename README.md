@@ -68,3 +68,10 @@ https://github.com/GoogleCloudPlatform/functions-framework-go
 - possibly use a better editor such as editarea, codemirror, monaco, codejar
   https://en.wikipedia.org/wiki/Comparison_of_JavaScript-based_source_code_editors
   or markdown editor like TinyMCE, CKEditor
+
+## Legal
+
+```text
+Copyright (c) 2021 Google LLC
+This is not an officially supported Google product
+```
