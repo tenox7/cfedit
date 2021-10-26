@@ -54,14 +54,13 @@ https://github.com/GoogleCloudPlatform/functions-framework-go
 
 
 ## Roadmap
-- auth via secrets manager?  
-  https://cloud.google.com/secret-manager/docs/reference/libraries#client-libraries-install-go
-- iam auth via login button?
+- iam auth?
+  https://cloud.google.com/functions/docs/securing
   https://developers.google.com/identity/sign-in/web/sign-in
 - css/better ui looks
 - combined bucket + folder + file selector like open file dialog
 - subfolders/prefixes
- 	https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-go
+  https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-go
 - preconditions and race conditions 
   https://cloud.google.com/storage/docs/generations-preconditions#examples_of_race_conditions
 - rate limit on auth
