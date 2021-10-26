@@ -21,8 +21,17 @@ Cloud Functions -> Create Function
 * Runtime: Go
 * Entry point: Main
 * Inline Editor: paste code of cfedit.go
+* Change project name and restrict to specific bucket
+* Add user accounts for basic auth
 
 ### Gcloud CLI
+
+Edit `cfedit.go`
+
+* Change project name and restrict to specific bucket
+* Add user accounts for basic auth
+
+Run:
 
 ```shell
 $ gcloud functions deploy \
