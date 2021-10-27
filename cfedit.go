@@ -43,13 +43,6 @@ var (
 	}{ // to generate password hash: echo -n "mypassword" | shasum -a 256
 		{username: "admin", sha256pw: "5234lkj14j34foobar"},
 	}
-
-	htmlHead = "<html><head>\n" +
-		"<style type=\"text/css\">\n" +
-		"html, body, table, td, th { font-family: sans-serif; font-size: 10pt; }\n" +
-		"td, th { background-color: #EEE; }\n" +
-		"</style>\n" +
-		"</head><body>"
 )
 
 type bmClient struct {
@@ -69,11 +62,19 @@ func Error(w http.ResponseWriter, h bool, m string, e error) {
 	}
 }
 
-func (c *bmClient) ListBuckets(ctx context.Context) {
+func (c *bmClient) ListObjects(ctx context.Context) {
 	c.w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintln(c.w, htmlHead)
+	fmt.Fprintln(c.w, "<html><body><center>")
+	var bName string
+	ba, err := c.b.Attrs(ctx)
+	if err == nil && ba.Name != "" {
+		bName = ba.Name
+	}
 
-	fmt.Fprintf(c.w, "Buckets for project <b>%s</b>:<p>\n", projectID)
+	fmt.Fprintf(c.w, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
+	var m = make(map[string]string)
+	m[bName] = "selected"
+
 	b := c.c.Buckets(ctx, projectID)
 	for {
 		a, err := b.Next()
@@ -87,28 +88,24 @@ func (c *bmClient) ListBuckets(ctx context.Context) {
 		if bucketName != "" && a.Name != bucketName {
 			continue
 		}
-		fmt.Fprintf(c.w, "<li><a href=\"/%s?o=l&b=%s\">%s</a>\n",
-			html.EscapeString(functionName),
+		fmt.Fprintf(c.w, "<option value=\"%v\" %v>%v</option>\n",
 			html.EscapeString(a.Name),
+			m[a.Name],
 			a.Name)
 	}
-	fmt.Fprintln(c.w, "</body></html>")
-}
+	fmt.Fprint(c.w, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
 
-func (c *bmClient) ListFiles(ctx context.Context) {
-	ba, err := c.b.Attrs(ctx)
-	if err != nil {
-		Error(c.w, false, "Getting bucket attributes", err)
+	if bName == "" {
+		fmt.Fprint(c.w, "</center>\n</body>\n</html>\n")
 		return
 	}
 
-	c.w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintln(c.w, htmlHead)
+	fmt.Fprintf(c.w, "<form action=\"/%s?o=e&b=%v\" method=\"post\"\">\n"+
+		"<select size=\"20\" name=\"f\" style=\"min-width: 400px;\">\n",
+		html.EscapeString(functionName),
+		html.EscapeString(ba.Name))
 
-	fmt.Fprintf(c.w, "<a href=\"/%v\">Home</a> | Files for <b>%s</b><p>\n", html.EscapeString(functionName), ba.Name)
 	o := c.b.Objects(ctx, &storage.Query{Prefix: ""})
-
-	fmt.Fprintln(c.w, "<table><tr><td>Filename</td><td>Size</td><td></td></tr>")
 	for {
 		oa, err := o.Next()
 		if err == iterator.Done {
@@ -118,20 +115,13 @@ func (c *bmClient) ListFiles(ctx context.Context) {
 			Error(c.w, true, "Listing files", err)
 			return
 		}
-		fmt.Fprintf(c.w, "<tr><td><a href=\"/%v?o=d&b=%v&f=%v\">%v</a></td>\n",
-			html.EscapeString(functionName),
-			html.EscapeString(ba.Name),
+		fmt.Fprintf(c.w, "<option value=\"%v\">%v [%v]</option>\n",
 			html.EscapeString(oa.Name),
 			oa.Name,
-		)
-		fmt.Fprintf(c.w, "<td>%v</td>\n", humanize.Bytes(uint64(oa.Size)))
-		fmt.Fprintf(c.w, "<td><a href=\"/%v?o=e&b=%v&f=%v\"><span class=\"s\">edit</span></a></td></tr>\n",
-			html.EscapeString(functionName),
-			html.EscapeString(ba.Name),
-			html.EscapeString(oa.Name),
+			humanize.Bytes(uint64(oa.Size)),
 		)
 	}
-	fmt.Fprintln(c.w, "</table></body></html>")
+	fmt.Fprint(c.w, "</select>\n<p>\n<input type=\"submit\" value=\"edit file\">\n</form>\n</center>\n</body>\n</html>\n")
 }
 
 func (c *bmClient) DumpFile(ctx context.Context, f string, esc bool) {
@@ -202,6 +192,7 @@ func (c *bmClient) WriteFile(ctx context.Context, f string) {
 
 	if len(co) == 0 {
 		Error(c.w, false, "Got 0 size", err)
+		return
 	}
 
 	bf := c.b.Object(f).NewWriter(ctx)
@@ -277,8 +268,6 @@ func Main(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.FormValue("o") {
-	case "l":
-		bc.ListFiles(ctx)
 	case "d":
 		bc.DumpFile(ctx, r.FormValue("f"), false)
 	case "e":
@@ -286,10 +275,6 @@ func Main(w http.ResponseWriter, r *http.Request) {
 	case "s":
 		bc.WriteFile(ctx, r.FormValue("f"))
 	default:
-		if bucketName != "" {
-			bc.ListFiles(ctx)
-			return
-		}
-		bc.ListBuckets(ctx)
+		bc.ListObjects(ctx)
 	}
 }
