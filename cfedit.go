@@ -39,9 +39,9 @@ var (
 	bucketName   = "" // restrict only to this bucket, "" all buckets
 	functionName = os.Getenv("K_SERVICE")
 
-	users = []struct {
-		username, sha256pw string
-	}{ // to generate password hash: echo -n "mypassword" | shasum -a 256
+	users = []struct{ username, sha256pw string }{
+		// to generate password hash: echo -n "mypassword" | shasum -a 256
+		// to disable authentication remove/comment out all users
 		{username: "admin", sha256pw: "5234lkj14j34foobar"},
 	}
 )
