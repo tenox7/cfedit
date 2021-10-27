@@ -286,6 +286,10 @@ func Main(w http.ResponseWriter, r *http.Request) {
 	case "s":
 		bc.WriteFile(ctx, r.FormValue("f"))
 	default:
+		if bucketName != "" {
+			bc.ListFiles(ctx)
+			return
+		}
 		bc.ListBuckets(ctx)
 	}
 }
