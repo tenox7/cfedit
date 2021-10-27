@@ -123,7 +123,22 @@ func (c *bmClient) ListObjects(ctx context.Context) {
 	fmt.Fprint(c.w, "</select>\n<p>\n<input type=\"submit\" value=\"edit file\">\n</form>\n</center>\n</body>\n</html>\n")
 }
 
-func (c *bmClient) DumpFile(ctx context.Context, f string, esc bool) {
+func (c *bmClient) EditFile(ctx context.Context, f string) {
+	ba, err := c.b.Attrs(ctx)
+	if err != nil {
+		Error(c.w, false, "Getting bucket attributes", err)
+		return
+	}
+
+	c.w.Header().Set("Content-Type", "text/html")
+
+	fmt.Fprintf(c.w, "<html>\n<body>\n"+
+		"<form name=\"edit\" action=\"/%v?o=s&b=%v&f=%v\" method=\"post\" enctype=\"multipart/form-data\">\n"+
+		"<textarea name=\"c\" spellcheck=\"false\" style=\"width: 100%%; height: 90%%\">\n",
+		html.EscapeString(functionName),
+		html.EscapeString(ba.Name),
+		html.EscapeString(f))
+
 	a, err := c.b.Object(f).Attrs(ctx)
 	if err != nil {
 		Error(c.w, false, "Getting file attributes", err)
@@ -144,36 +159,12 @@ func (c *bmClient) DumpFile(ctx context.Context, f string, esc bool) {
 		return
 	}
 
-	c.w.Header().Set("Content-Type", a.ContentType)
-	if esc {
-		c.w.Write([]byte(html.EscapeString(string(d))))
-		return
-	}
-	c.w.Write(d)
-}
+	c.w.Write([]byte(html.EscapeString(string(d))))
 
-func (c *bmClient) EditFile(ctx context.Context, f string) {
-	ba, err := c.b.Attrs(ctx)
-	if err != nil {
-		Error(c.w, false, "Getting bucket attributes", err)
-		return
-	}
-
-	c.w.Header().Set("Content-Type", "text/html")
-
-	fmt.Fprintf(c.w, "<html>\n<body>\n"+
-		"<form name=\"edit\" action=\"/%v?o=s&b=%v&f=%v\" method=\"post\" enctype=\"multipart/form-data\">\n"+
-		"<textarea name=\"c\" spellcheck=\"false\" style=\"width: 100%%; height: 95%%\">\n",
-		html.EscapeString(functionName),
-		html.EscapeString(ba.Name),
-		html.EscapeString(f))
-
-	c.DumpFile(ctx, f, true)
-
-	fmt.Fprintf(c.w, "</textarea>\n"+
-		"<input type=\"submit\" name=\"txtbtn\" value=\"Save\"> \n"+
-		"<input type=\"submit\" name=\"txtbtn\" value=\"Cancel\">\n"+
-		"</form></body></html>\n")
+	fmt.Fprintf(c.w, "</textarea><p>\n"+
+		"<input type=\"submit\" value=\"Save\"></form>\n"+
+		"<form  action=\"/%v?b=%v\" method=\"post\"><input type=\"submit\" value=\"Cancel\">\n"+
+		"</form>\n</body>\n</html>\n", html.EscapeString(functionName), html.EscapeString(ba.Name))
 }
 
 func (c *bmClient) WriteFile(ctx context.Context, f string) {
@@ -247,9 +238,6 @@ func Main(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseMultipartForm(10 << 20)
-	if r.FormValue("txtbtn") == "Cancel" {
-		r.Form.Set("o", "")
-	}
 	if bucketName != "" {
 		r.Form.Set("b", bucketName)
 	}
@@ -266,8 +254,6 @@ func Main(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.FormValue("o") {
-	case "d":
-		bc.DumpFile(ctx, r.FormValue("f"), false)
 	case "e":
 		bc.EditFile(ctx, r.FormValue("f"))
 	case "s":
