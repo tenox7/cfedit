@@ -71,33 +71,32 @@ func (c *bmClient) ListObjects(ctx context.Context) {
 		bName = ba.Name
 	}
 
-	fmt.Fprintf(c.w, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
-	var m = make(map[string]string)
-	m[bName] = "selected"
+	if bucketName == "" {
+		fmt.Fprintf(c.w, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
+		var m = make(map[string]string)
+		m[bName] = "selected"
 
-	b := c.c.Buckets(ctx, projectID)
-	for {
-		a, err := b.Next()
-		if err == iterator.Done {
-			break
+		b := c.c.Buckets(ctx, projectID)
+		for {
+			a, err := b.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				Error(c.w, true, "Listing buckets", err)
+				return
+			}
+			fmt.Fprintf(c.w, "<option value=\"%v\" %v>%v</option>\n",
+				html.EscapeString(a.Name),
+				m[a.Name],
+				a.Name)
 		}
-		if err != nil {
-			Error(c.w, true, "Listing buckets", err)
+		fmt.Fprint(c.w, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
+
+		if bName == "" {
+			fmt.Fprint(c.w, "</center>\n</body>\n</html>\n")
 			return
 		}
-		if bucketName != "" && a.Name != bucketName {
-			continue
-		}
-		fmt.Fprintf(c.w, "<option value=\"%v\" %v>%v</option>\n",
-			html.EscapeString(a.Name),
-			m[a.Name],
-			a.Name)
-	}
-	fmt.Fprint(c.w, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
-
-	if bName == "" {
-		fmt.Fprint(c.w, "</center>\n</body>\n</html>\n")
-		return
 	}
 
 	fmt.Fprintf(c.w, "<form action=\"/%s?o=e&b=%v\" method=\"post\"\">\n"+
@@ -248,9 +247,8 @@ func Main(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseMultipartForm(10 << 20)
-
 	if r.FormValue("txtbtn") == "Cancel" {
-		r.Form.Set("o", "l")
+		r.Form.Set("o", "")
 	}
 	if bucketName != "" {
 		r.Form.Set("b", bucketName)
