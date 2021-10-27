@@ -2,14 +2,11 @@
 
 Browser based text editor for files in gcloud storage buckets.
 
-## Why
-
-- Edit files in storage buckets from anywhere even on a Chromebook
-- No need for `gsutil` or `gcsfuse`, desktop or cloud editor apps
-- Cloud Functions are super simple, easy and cheap
-- No no need for VMs, Containers, Cloud Run, Cloud Shells/IDE
-- Dead simple implementing just enough for html textarea file editor
-- Implements own authentication, no need for IAM accounts
+- Edit files in storage buckets from anywhere even a Chromebook
+- No need for `gsutil` or `gcsfuse`, specialized text editors
+- No need for VMs, Containers, Cloud Run, Cloud Shells/IDE
+- No frills, just enough for html textarea based file editor
+- No need for IAM accounts, implements own authentication
 
 ## Deployment 
 
@@ -17,10 +14,10 @@ Browser based text editor for files in gcloud storage buckets.
 
 Cloud Functions -> Create Function
 
-* Authentication: Allow unauthenticated invocations
-* Runtime: Go
-* Entry point: Main
-* Inline Editor: paste code of cfedit.go
+* Authentication: **Allow unauthenticated invocations**
+* Runtime: **Go**
+* Entry point: **Main**
+* Inline Editor: paste code of `cfedit.go`
 * Change project name and restrict to specific bucket
 * Add user accounts for basic auth
 
@@ -34,14 +31,15 @@ Edit `cfedit.go`
 Run:
 
 ```shell
-$ gcloud functions deploy \
-    cfedit \
-    --entry-point Main \
+$ gcloud functions deploy cfedit \
+    --entry-point=Main \
     --runtime=go116 \
     --trigger-http \
     --allow-unauthenticated \
     --source=/path/to/cfedit
 ```
+
+Delete:
 
 ```shell
 $ gcloud functions delete cfedit
@@ -51,6 +49,8 @@ $ gcloud functions delete cfedit
 ## Local Development
 
 Create a Service Account under IAM. Create and download a json key file.
+
+Run locally:
 
 ```shell
 $ GOOGLE_APPLICATION_CREDENTIALS=~/project-1234345.json go run local/main.go
@@ -66,8 +66,6 @@ https://github.com/GoogleCloudPlatform/functions-framework-go
 - iam auth?
   https://cloud.google.com/functions/docs/securing
   https://developers.google.com/identity/sign-in/web/sign-in
-- css/better ui looks
-- combined bucket + folder + file selector like open file dialog
 - subfolders/prefixes
   https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-go
 - preconditions and race conditions 
