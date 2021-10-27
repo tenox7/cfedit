@@ -145,7 +145,7 @@ func (c *bmClient) EditFile(ctx context.Context, f string) {
 		return
 	}
 
-	// getting latest generation circumvents file caching
+	// getting latest generation specifically circumvents getting cdn cached version
 	r, err := c.b.Object(f).Generation(a.Generation).NewReader(ctx)
 	if err != nil {
 		Error(c.w, false, "Opening file", err)
@@ -162,8 +162,8 @@ func (c *bmClient) EditFile(ctx context.Context, f string) {
 	c.w.Write([]byte(html.EscapeString(string(d))))
 
 	fmt.Fprintf(c.w, "</textarea><p>\n"+
-		"<input type=\"submit\" value=\"Save\"></form>\n"+
-		"<form  action=\"/%v?b=%v\" method=\"post\"><input type=\"submit\" value=\"Cancel\">\n"+
+		"<input type=\"submit\" value=\"Save\" style=\"float: left;\"></form>\n"+
+		"<form  action=\"/%v?b=%v\" method=\"post\"><input type=\"submit\" value=\"Cancel\" style=\"float: left; margin-left: 10px\">\n"+
 		"</form>\n</body>\n</html>\n", html.EscapeString(functionName), html.EscapeString(ba.Name))
 }
 
