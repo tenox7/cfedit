@@ -26,6 +26,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -52,19 +53,14 @@ type bmClient struct {
 	c *storage.Client
 }
 
-func Error(w http.ResponseWriter, h bool, m string, e error) {
-	if !h {
-		w.Header().Set("Content-Type", "text/plain")
-	}
+func Error(w http.ResponseWriter, m string, e error) {
+	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "Error: %v - %v\n", m, e)
-	if h {
-		fmt.Fprintln(w, "</html></body>")
-	}
 }
 
 func (c *bmClient) ListObjects(ctx context.Context) {
-	c.w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintln(c.w, "<html><body><center>")
+	var out strings.Builder
+	out.WriteString("<html>\n<body>\n<center>\n")
 	var bName string
 	ba, err := c.b.Attrs(ctx)
 	if err == nil && ba.Name != "" {
@@ -72,7 +68,7 @@ func (c *bmClient) ListObjects(ctx context.Context) {
 	}
 
 	if bucketName == "" {
-		fmt.Fprintf(c.w, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
+		fmt.Fprintf(&out, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
 		var m = make(map[string]string)
 		m[bName] = "selected"
 
@@ -83,23 +79,25 @@ func (c *bmClient) ListObjects(ctx context.Context) {
 				break
 			}
 			if err != nil {
-				Error(c.w, true, "Listing buckets", err)
+				Error(c.w, "Listing buckets", err)
 				return
 			}
-			fmt.Fprintf(c.w, "<option value=\"%v\" %v>%v</option>\n",
+			fmt.Fprintf(&out, "<option value=\"%v\" %v>%v</option>\n",
 				html.EscapeString(a.Name),
 				m[a.Name],
 				a.Name)
 		}
-		fmt.Fprint(c.w, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
+		fmt.Fprint(&out, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
 
 		if bName == "" {
-			fmt.Fprint(c.w, "</center>\n</body>\n</html>\n")
+			fmt.Fprint(&out, "</center>\n</body>\n</html>\n")
+			c.w.Header().Set("Content-Type", "text/html")
+			c.w.Write([]byte(out.String()))
 			return
 		}
 	}
 
-	fmt.Fprintf(c.w, "<form action=\"/%s?o=e&b=%v\" method=\"post\"\">\n"+
+	fmt.Fprintf(&out, "<form action=\"/%s?o=e&b=%v\" method=\"post\"\">\n"+
 		"<select size=\"20\" name=\"f\" style=\"min-width: 400px;\">\n",
 		html.EscapeString(functionName),
 		html.EscapeString(ba.Name))
@@ -111,22 +109,45 @@ func (c *bmClient) ListObjects(ctx context.Context) {
 			break
 		}
 		if err != nil {
-			Error(c.w, true, "Listing files", err)
+			Error(c.w, "Listing files", err)
 			return
 		}
-		fmt.Fprintf(c.w, "<option value=\"%v\">%v [%v]</option>\n",
+		fmt.Fprintf(&out, "<option value=\"%v\">%v [%v]</option>\n",
 			html.EscapeString(oa.Name),
 			oa.Name,
 			humanize.Bytes(uint64(oa.Size)),
 		)
 	}
-	fmt.Fprint(c.w, "</select>\n<p>\n<input type=\"submit\" value=\"edit file\">\n</form>\n</center>\n</body>\n</html>\n")
+	fmt.Fprint(&out, "</select>\n<p>\n<input type=\"submit\" value=\"edit file\">\n</form>\n</center>\n</body>\n</html>\n")
+
+	c.w.Header().Set("Content-Type", "text/html")
+	c.w.Write([]byte(out.String()))
 }
 
 func (c *bmClient) EditFile(ctx context.Context, f string) {
 	ba, err := c.b.Attrs(ctx)
 	if err != nil {
-		Error(c.w, false, "Getting bucket attributes", err)
+		Error(c.w, "Getting bucket attributes", err)
+		return
+	}
+
+	a, err := c.b.Object(f).Attrs(ctx)
+	if err != nil {
+		Error(c.w, "Getting file attributes", err)
+		return
+	}
+
+	// getting latest generation specifically circumvents getting cdn cached version
+	r, err := c.b.Object(f).Generation(a.Generation).NewReader(ctx)
+	if err != nil {
+		Error(c.w, "Opening file", err)
+		return
+	}
+	defer r.Close()
+
+	d, err := ioutil.ReadAll(r)
+	if err != nil {
+		Error(c.w, "Reading file", err)
 		return
 	}
 
@@ -139,26 +160,6 @@ func (c *bmClient) EditFile(ctx context.Context, f string) {
 		html.EscapeString(ba.Name),
 		html.EscapeString(f))
 
-	a, err := c.b.Object(f).Attrs(ctx)
-	if err != nil {
-		Error(c.w, false, "Getting file attributes", err)
-		return
-	}
-
-	// getting latest generation specifically circumvents getting cdn cached version
-	r, err := c.b.Object(f).Generation(a.Generation).NewReader(ctx)
-	if err != nil {
-		Error(c.w, false, "Opening file", err)
-		return
-	}
-	defer r.Close()
-
-	d, err := ioutil.ReadAll(r)
-	if err != nil {
-		Error(c.w, false, "Reading file", err)
-		return
-	}
-
 	c.w.Write([]byte(html.EscapeString(string(d))))
 
 	fmt.Fprintf(c.w, "</textarea><p>\n"+
@@ -170,18 +171,18 @@ func (c *bmClient) EditFile(ctx context.Context, f string) {
 func (c *bmClient) WriteFile(ctx context.Context, f string) {
 	ba, err := c.b.Attrs(ctx)
 	if err != nil {
-		Error(c.w, false, "Getting bucket attributes", err)
+		Error(c.w, "Getting bucket attributes", err)
 		return
 	}
 
 	co := c.r.FormValue("c")
 	if err != nil {
-		Error(c.w, false, "Parsing form", err)
+		Error(c.w, "Parsing form", err)
 		return
 	}
 
 	if len(co) == 0 {
-		Error(c.w, false, "Got 0 size", err)
+		Error(c.w, "Got 0 size", err)
 		return
 	}
 
@@ -189,17 +190,17 @@ func (c *bmClient) WriteFile(ctx context.Context, f string) {
 	bf.ContentType = http.DetectContentType([]byte(co))
 	n, err := bf.Write([]byte(co))
 	if err != nil {
-		Error(c.w, false, "Writing file", err)
+		Error(c.w, "Writing file", err)
 		return
 	}
 
 	err = bf.Close()
 	if err != nil {
-		Error(c.w, false, "Closing file", err)
+		Error(c.w, "Closing file", err)
 		return
 	}
 	if n != len(co) {
-		Error(c.w, false, "File lenght", fmt.Errorf("form:%v != bucket:%v", len(co), n))
+		Error(c.w, "File lenght", fmt.Errorf("form:%v != bucket:%v", len(co), n))
 		return
 	}
 
@@ -233,7 +234,7 @@ func Main(w http.ResponseWriter, r *http.Request) {
 
 	c, err := storage.NewClient(ctx)
 	if err != nil {
-		Error(w, false, "Opening storage client", err)
+		Error(w, "Opening storage client", err)
 		return
 	}
 
