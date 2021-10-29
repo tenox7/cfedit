@@ -35,14 +35,14 @@ import (
 )
 
 var (
-	projectID    = "myproject"
-	bucketName   = "" // restrict only to this bucket, "" all buckets
+	projectID    = "tenox7"
+	bucketName   = "www.unixzoo.com" // restrict only to this bucket, "" all buckets
 	functionName = os.Getenv("K_SERVICE")
 
 	users = []struct{ username, sha256pw string }{
 		// to generate password hash: echo -n "mypassword" | shasum -a 256
 		// to disable authentication remove/comment out all users
-		{username: "admin", sha256pw: "5234lkj14j34foobar"},
+		{username: "tenox", sha256pw: "ed38f044146c5df234303039f832fd6cd94e1bec3c1f509acd336f8a4797c448"},
 	}
 )
 
@@ -228,7 +228,7 @@ unauth:
 	return false
 }
 
-func Main(w http.ResponseWriter, r *http.Request) {
+func CFEdit(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*30)
 	defer cancel()
 

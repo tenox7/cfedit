@@ -16,7 +16,7 @@ Cloud Functions -> Create Function
 
 * Authentication: **Allow unauthenticated invocations**
 * Runtime: **Go**
-* Entry point: **Main**
+* Entry point: **CFEdit**
 * Inline Editor: paste code of `cfedit.go`
 * Change project name and restrict to specific bucket
 * Add user accounts for basic auth
@@ -32,7 +32,7 @@ Run:
 
 ```shell
 $ gcloud functions deploy cfedit \
-    --entry-point=Main \
+    --entry-point=CFEdit \
     --runtime=go116 \
     --trigger-http \
     --allow-unauthenticated \
