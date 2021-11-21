@@ -35,14 +35,12 @@ import (
 )
 
 var (
-	projectID    = "tenox7"
-	bucketName   = "www.unixzoo.com" // restrict only to this bucket, "" all buckets
+	projectID    = "myproject"
+	bucketName   = "somebucket" // restrict only to this bucket, "" all buckets
 	functionName = os.Getenv("K_SERVICE")
 
-	users = []struct{ username, sha256pw string }{
-		// to generate password hash: echo -n "mypassword" | shasum -a 256
-		// to disable authentication remove/comment out all users
-		{username: "tenox", sha256pw: "ed38f044146c5df234303039f832fd6cd94e1bec3c1f509acd336f8a4797c448"},
+	users = []struct{ login, salt, hash string }{
+		{login: "admin", salt: "pepper", hash: "sha256 hash of salt+passwd"}, // comment out to disable auth
 	}
 )
 
@@ -216,9 +214,13 @@ func (c *bmClient) Auth(ctx context.Context) bool {
 	if !ok {
 		goto unauth
 	}
-	s = fmt.Sprintf("%x", sha256.Sum256([]byte(p)))
 	for _, usr := range users {
-		if subtle.ConstantTimeCompare([]byte(u), []byte(usr.username)) == 1 && subtle.ConstantTimeCompare([]byte(s), []byte(usr.sha256pw)) == 1 {
+		if subtle.ConstantTimeCompare([]byte(u), []byte(usr.login)) != 1 {
+			continue
+		}
+
+		s = fmt.Sprintf("%x", sha256.Sum256([]byte(usr.salt+p)))
+		if subtle.ConstantTimeCompare([]byte(s), []byte(usr.hash)) == 1 {
 			return true
 		}
 	}
