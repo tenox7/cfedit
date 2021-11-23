@@ -59,10 +59,10 @@ buttons.
 The user database is stored in a struct inside `var()` section of cfedit.go.
 
 ```go
-	users = []struct{ login, salt, hash string }{
-		{login: "admin", salt: "abc", hash: "hash of salt+pass"},
-		{login: "editor", salt: "def", hash: "hash of salt+pass"},
-	}
+users = []struct{ login, salt, hash string }{
+  {login: "admin", salt: "abc", hash: "hash of salt+pass"},
+  {login: "editor", salt: "def", hash: "hash of salt+pass"},
+}
 ```
 
 ### Adding a user
