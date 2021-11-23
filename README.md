@@ -5,7 +5,7 @@ Browser based text editor for files in gcloud storage buckets.
 - Edit files in storage buckets from anywhere even a Chromebook
 - No need for `gsutil` or `gcsfuse`, specialized text editors
 - No need for VMs, Containers, Cloud Run, Cloud Shells/IDE
-- No frills, just enough for html textarea based file editor
+- No frills, just enough for a html textarea based file editor
 - Doesn't use IAM/Google accounts, implements own authentication
 
 ## Deployment 
