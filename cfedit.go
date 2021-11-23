@@ -35,8 +35,8 @@ import (
 )
 
 var (
-	projectID    = "myproject"
-	bucketName   = "somebucket" // restrict only to this bucket, "" all buckets
+	projectID    = "MyProject" // only needed for listing buckets, if you specify a bucket this can be empty
+	bucketName   = ""          // restrict only to this bucket, "" will list all buckets under projectID
 	functionName = os.Getenv("K_SERVICE")
 
 	users = []struct{ login, salt, hash string }{
@@ -56,43 +56,59 @@ func Error(w http.ResponseWriter, m string, e error) {
 	fmt.Fprintf(w, "Error: %v - %v\n", m, e)
 }
 
+func ListBuckets(ctx context.Context, c *storage.Client, bSel string) (string, error) {
+	var out strings.Builder
+	//var bSel string
+	fmt.Fprintf(&out, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
+	var m = make(map[string]string)
+	m[bSel] = "selected"
+
+	b := c.Buckets(ctx, projectID)
+	for {
+		a, err := b.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&out, "<option value=\"%v\" %v>%v</option>\n",
+			html.EscapeString(a.Name),
+			m[a.Name],
+			a.Name)
+	}
+	fmt.Fprint(&out, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
+
+	if bSel == "" {
+		fmt.Fprint(&out, "</center>\n</body>\n</html>\n")
+	}
+	return out.String(), nil
+}
+
 func (c *bmClient) ListObjects(ctx context.Context) {
 	var out strings.Builder
 	out.WriteString("<html>\n<body>\n<center>\n")
-	var bName string
+
+	var bSel string
 	ba, err := c.b.Attrs(ctx)
 	if err == nil && ba.Name != "" {
-		bName = ba.Name
+		bSel = ba.Name
 	}
-
 	if bucketName == "" {
-		fmt.Fprintf(&out, "<form action=\"/%s\" method=\"post\"\">\n<select name=\"b\">\n", html.EscapeString(functionName))
-		var m = make(map[string]string)
-		m[bName] = "selected"
-
-		b := c.c.Buckets(ctx, projectID)
-		for {
-			a, err := b.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				Error(c.w, "Listing buckets", err)
-				return
-			}
-			fmt.Fprintf(&out, "<option value=\"%v\" %v>%v</option>\n",
-				html.EscapeString(a.Name),
-				m[a.Name],
-				a.Name)
+		o, err := ListBuckets(ctx, c.c, bSel)
+		if err != nil {
+			Error(c.w, "Listing buckets", err)
+			return
 		}
-		fmt.Fprint(&out, "</select>\n<input type=\"submit\" value=\"get files\">\n</form>\n<p>\n")
-
-		if bName == "" {
-			fmt.Fprint(&out, "</center>\n</body>\n</html>\n")
-			c.w.Header().Set("Content-Type", "text/html")
+		out.WriteString(o)
+	}
+	if err != nil {
+		if bucketName == "" {
 			c.w.Write([]byte(out.String()))
 			return
 		}
+		Error(c.w, "Opening a bucket", err)
+		return
 	}
 
 	fmt.Fprintf(&out, "<form action=\"/%s?o=e&b=%v\" method=\"post\"\">\n"+
@@ -161,8 +177,8 @@ func (c *bmClient) EditFile(ctx context.Context, f string) {
 	c.w.Write([]byte(html.EscapeString(string(d))))
 
 	fmt.Fprintf(c.w, "</textarea><p>\n"+
-		"<input type=\"submit\" value=\"Save\" style=\"float: left;\"></form>\n"+
-		"<form  action=\"/%v?b=%v\" method=\"post\"><input type=\"submit\" value=\"Cancel\" style=\"float: left; margin-left: 10px\">\n"+
+		"<input type=\"submit\" value=\"save\" style=\"float: left;\"></form>\n"+
+		"<form  action=\"/%v?b=%v\" method=\"post\"><input type=\"submit\" value=\"cancel\" style=\"float: left; margin-left: 10px\">\n"+
 		"</form>\n</body>\n</html>\n", html.EscapeString(functionName), html.EscapeString(ba.Name))
 }
 
@@ -205,12 +221,12 @@ func (c *bmClient) WriteFile(ctx context.Context, f string) {
 	http.Redirect(c.w, c.r, fmt.Sprintf("/%v?o=l&b=%v", html.EscapeString(functionName), html.EscapeString(ba.Name)), http.StatusTemporaryRedirect)
 }
 
-func (c *bmClient) Auth(ctx context.Context) bool {
+func Auth(w http.ResponseWriter, r *http.Request) bool {
 	if len(users) == 0 {
 		return true
 	}
 	var s string
-	u, p, ok := c.r.BasicAuth()
+	u, p, ok := r.BasicAuth()
 	if !ok {
 		goto unauth
 	}
@@ -225,12 +241,16 @@ func (c *bmClient) Auth(ctx context.Context) bool {
 		}
 	}
 unauth:
-	c.w.Header().Set("WWW-Authenticate", "Basic realm=\""+projectID+"\"")
-	http.Error(c.w, "Unauthorized", http.StatusUnauthorized)
+	w.Header().Set("WWW-Authenticate", "Basic realm=\"cfedit\"")
+	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	return false
 }
 
 func CFEdit(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(10 << 20)
+	if !Auth(w, r) {
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*30)
 	defer cancel()
 
@@ -240,21 +260,12 @@ func CFEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseMultipartForm(10 << 20)
 	if bucketName != "" {
 		r.Form.Set("b", bucketName)
 	}
+	b := c.Bucket(r.FormValue("b"))
 
-	bc := &bmClient{
-		w: w,
-		r: r,
-		b: c.Bucket(r.FormValue("b")),
-		c: c,
-	}
-
-	if !bc.Auth(ctx) {
-		return
-	}
+	bc := &bmClient{w, r, b, c}
 
 	switch r.FormValue("o") {
 	case "e":
