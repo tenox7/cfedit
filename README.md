@@ -67,7 +67,7 @@ users = []struct{ login, salt, hash string }{
 
 ### Adding a user
 
-To add a user simply add a new line with `{login: "...", salt: "...", hash: "..."},`.
+To add a user simply add a new line with `{login: "foo", salt: "bar", hash: "..."},`.
 
 To generate the password hash:
 
