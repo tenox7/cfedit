@@ -84,9 +84,9 @@ c8f8b724728a6d6684106e5e64e94ce811c9965d19dd44dd073cf86cf43bc238
 ```
 
 ```go
-	users = []struct{ login, salt, hash string }{
-		{login: "foo", salt: "bar", hash: "c8f8b724728a6d6684106e5e64e94ce811c9965d19dd44dd073cf86cf43bc238"},
-  }
+users = []struct{ login, salt, hash string } {
+	{login: "foo", salt: "bar", hash: "c8f8b724728a6d6684106e5e64e94ce811c9965d19dd44dd073cf86cf43bc238"},
+}
 ```
 
 ### No authentication
