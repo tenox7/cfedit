@@ -111,6 +111,8 @@ https://github.com/GoogleCloudPlatform/functions-framework-go
 
 ## Roadmap
 - rate limit on auth attempts
+- create new empty file, rename, delete
+- upload/download files
 - subfolders/prefixes
   https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-go
 - preconditions and race conditions 
