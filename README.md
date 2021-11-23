@@ -6,7 +6,7 @@ Browser based text editor for files in gcloud storage buckets.
 - No need for `gsutil` or `gcsfuse`, specialized text editors
 - No need for VMs, Containers, Cloud Run, Cloud Shells/IDE
 - No frills, just enough for html textarea based file editor
-- No need for IAM accounts, implements own authentication
+- Doesn't use IAM/Google accounts, implements own authentication
 
 ## Deployment 
 
@@ -47,13 +47,13 @@ $ gcloud functions delete cfedit
 
 ## User Authentication
 
-Cfedit uses HTTP Basic Auth with hardcoded user database.
-
-Technically [IAM + OAuth2](https://cloud.google.com/functions/docs/securing) authentication could be used.
-However this would require a JavaScript based
+Cfedit uses HTTP Basic Auth with hardcoded user database. I specifically wanted
+to avoid forcing users to have Google accounts,
+[IAM + OAuth2](https://cloud.google.com/functions/docs/securing)
+complexities and JavaScript based
 [Google Sign-in](https://developers.google.com/identity/sign-in/web/sign-in)
-button. Most importantly however users would be forced have a Google accounts.
-I specifically wanted to avoid these complexities and inconveniences. 
+buttons. By providing own auth you can simply create your own users by adding
+a line and give it to anyone to use.
 
 ### User Database
 
@@ -111,11 +111,11 @@ https://github.com/GoogleCloudPlatform/functions-framework-go
 
 
 ## Roadmap
+- rate limit on auth attempts
 - subfolders/prefixes
   https://cloud.google.com/storage/docs/listing-objects#storage-list-objects-go
 - preconditions and race conditions 
   https://cloud.google.com/storage/docs/generations-preconditions#examples_of_race_conditions
-- rate limit on auth
 - possibly use a better editor such as editarea, codemirror, monaco, codejar
   https://en.wikipedia.org/wiki/Comparison_of_JavaScript-based_source_code_editors
   or markdown editor like TinyMCE, CKEditor
