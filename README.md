@@ -52,8 +52,7 @@ to avoid forcing users to have Google accounts,
 [IAM + OAuth2](https://cloud.google.com/functions/docs/securing)
 complexities and JavaScript based
 [Google Sign-in](https://developers.google.com/identity/sign-in/web/sign-in)
-buttons. By providing own auth you can simply create your own users by adding
-a line and give it to anyone to use.
+buttons.
 
 ### User Database
 
